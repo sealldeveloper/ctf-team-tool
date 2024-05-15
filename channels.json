@@ -23,29 +23,5 @@
                 "type": "voice"
             }
         ]
-    },
-    {
-        "name": "<NAME>2",
-        "channels": [
-            {
-                "name": "<NAME>-info",
-                "type": "text",
-                "participant_editable": false
-            },
-            {
-                "name": "<NAME>-chat",
-                "type": "text",
-                "archive": true
-            },
-            {
-                "name": "<NAME>-chals",
-                "type": "forum",
-                "archive": true
-            },
-            {
-                "name": "<NAME> VC",
-                "type": "voice"
-            }
-        ]
     }
 ]
