@@ -1,6 +1,15 @@
 # CTF Team Tool
 Gday, this is a little bot I made for the CTF teams I play in [IrisSec](https://irissec.xyz/) and [thehackerscrew](https://www.thehackerscrew.team/) (one of them being quite disorganised with their channels previously) so I made this bot to automate the reaction role process, role creation, category, channels and the likes.
 
+## .env Setup
+Firstly, rename the `.env.template` to `.env`, here is a table for the key and value paris that are expected.
+
+| Key Name      | Value Type | Value Options | Optional? | Default Value | Purpose                                      |
+|---------------|------------|---------------|-----------|---------------|----------------------------------------------|
+| TOKEN         | String     | -             | No        | -             | The token for your Discord Bot               |
+| GUILD_ID      | String     | -             | No        | -             | The ID for the Discord Server your bot is in |
+| ADMIN_ROLE_ID | String     | -             | No        | -             | The role ID for the Administrator role       |
+
 ## Channel Customisation
 The layout of channels is in the `channels.json` file. The array stores objects that contain both a `name` and a `channels` key, the `name` value being the name of the category and `channels` value being another array containing objects. The channels have a few keys listed below in this table.
 
