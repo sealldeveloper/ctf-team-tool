@@ -20,6 +20,19 @@ The layout of channels is in the `channels.json` file. The array stores objects 
 | archive              | Bool       | true/false       | Yes       | false         | If the channel is archived when running the `archive` command |
 | participant_editable | Bool       | true/false       | Yes       | true          | If the channel should be editable by participants             |
 
+## Using the bot
+This bot was designed on **Python 3.10.9**.
+
+Firstly install the requirements:
+```
+python3 -m pip install -r requirements.txt
+```
+
+And then run the bot:
+```
+python3 main.py
+```
+
 ## To-do
 - Have reaction role expiration on a timestamp so people cannot join mid-CTF (prevent potential cheating)
 - CTF auto-archival at a timestamp
