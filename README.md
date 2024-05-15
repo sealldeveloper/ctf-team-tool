@@ -2,7 +2,7 @@
 Gday, this is a little bot I made for the CTF teams I play in [IrisSec](https://irissec.xyz/) and [thehackerscrew](https://www.thehackerscrew.team/) (one of them being quite disorganised with their channels previously) so I made this bot to automate the reaction role process, role creation, category, channels and the likes.
 
 ## .env Setup
-Firstly, rename the `.env.template` to `.env`, here is a table for the key and value paris that are expected.
+Firstly, rename the `.env.template` to `.env`, here is a table for the key and value pairs that are expected.
 
 | Key Name      | Value Type | Value Options | Optional? | Default Value | Purpose                                      |
 |---------------|------------|---------------|-----------|---------------|----------------------------------------------|
