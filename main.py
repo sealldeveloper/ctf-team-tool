@@ -18,7 +18,7 @@ BOT_ROLE_ID = 0
 
 description = '''A CTF Team bot for setting up CTF participation in a clean way.
 
-Made by se.al'''
+Made by se.al / sealldeveloper'''
 
 def clean_string(input_string):
     # Use regular expression to replace all characters except [a-z0-9-] with nothing
