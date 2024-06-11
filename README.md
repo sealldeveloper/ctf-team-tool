@@ -40,3 +40,4 @@ python3 main.py
 
 ## Known Bugs
 - When working with multiple categories we can hit some errors when archiving where channels do not go to the correct archival category when channels share the same name.
+- Interaction defference can cause some commands to partially execute wrong, [known issue](https://github.com/discord/discord-api-docs/issues/5558).
