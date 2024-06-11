@@ -5,7 +5,11 @@ import math
 import datetime
 from dotenv import load_dotenv, dotenv_values
 import os, json, re
+from emoji import emoji_count
 from time import sleep
+from tinydb import TinyDB, Query, operations
+db = TinyDB('db.json')
+query = Query()
 with open('channels.json','r') as f:
     CHANNEL_LAYOUT=json.load(f)
 
@@ -15,6 +19,11 @@ TOKEN = os.getenv("TOKEN")
 GUILD_ID = int(os.getenv("GUILD_ID"))
 ADMIN_ROLE_ID = int(os.getenv("ADMIN_ROLE_ID"))
 BOT_ROLE_ID = 0
+
+if not db.all():
+    db.insert({'reaction_messages':{}})
+messages = db.all()[0]['reaction_messages']
+print(messages,type(messages))
 
 description = '''A CTF Team bot for setting up CTF participation in a clean way.
 
@@ -40,11 +49,13 @@ async def make_channel(category,ch,chname):
         c = await category.create_voice_channel(name=chname)
     return c
 
-@tree.command(name="rm", description="Remove a CTF",guild=discord.Object(id=GUILD_ID))
+@tree.command(name="rmctf", description="Remove a CTF",guild=discord.Object(id=GUILD_ID))
 async def slash_command(interaction: discord.Interaction, name: str):    
+    await interaction.response.defer(ephemeral=True)
     print(f'[{interaction.user.id}] - ran {interaction.command.name}')
     if interaction.user.guild_permissions.administrator or interaction.user.id == 630874656198361099:
-        await interaction.response.defer()
+        if not name:
+            return await interaction.edit_original_response(content='Must provide a name.')
         guild = interaction.guild
         role = discord.utils.get(guild.roles, name=name)
         for cat in CHANNEL_LAYOUT:
@@ -56,24 +67,41 @@ async def slash_command(interaction: discord.Interaction, name: str):
                     try:
                         await channel.delete()
                     except:
-                        return await interaction.followup.send(f'CTF `{name}` could not delete the channel <#{channel.id}>.')
+                        return await interaction.edit_original_response(content=f'CTF `{name}` could not delete the channel <#{channel.id}>.')
                 await category.delete()
             else:
-                return await interaction.followup.send(f'CTF `{name}` could not be removed as the category could not be found.')
+                return await interaction.edit_original_response(content=f'CTF `{name}` could not be removed as the category could not be found.')
         if role:
             try:
                 await role.delete()
             except:
-                return await interaction.followup.send(f'Unable to delete `{role.name}` role.')
-        return await interaction.followup.send(f'CTF `{name}` was removed!')
+                return await interaction.edit_original_response(content=f'Unable to delete `{role.name}` role.')
+        messages = db.all()[0]['reaction_messages']
+        for message_id in messages.keys():
+            if messages[message_id]['type'] == 'ctfmenu':
+                if name == messages[message_id]['ctfname']:
+                    del messages[message_id]
+                    for channel in guild.text_channels:
+                        try:
+                            message = await channel.fetch_message(message_id)
+                            if message:
+                                await message.delete()
+                                break
+                        except:
+                            message = None
+                    break
+        db.update({'reaction_messages':messages})
+        return await interaction.edit_original_response(content=f'CTF `{name}` was removed!')
     else:
-        return await interaction.response.send_message('You are not an admin!',ephemeral=True)
+        return await interaction.edit_original_response(content='You are not an admin!')
 
-@tree.command(name="archive", description="Archive a CTF",guild=discord.Object(id=GUILD_ID))
+@tree.command(name="archivectf", description="Archive a CTF",guild=discord.Object(id=GUILD_ID))
 async def slash_command(interaction: discord.Interaction, name: str):    
+    await interaction.response.defer(ephemeral=True)
     print(f'[{interaction.user.id}] - ran {interaction.command.name}')
     if interaction.user.guild_permissions.administrator or interaction.user.id == 630874656198361099:
-        await interaction.response.defer()
+        if not name:
+            return await interaction.edit_original_response(content='Must provide a name.')
         guild = interaction.guild
         role = discord.utils.get(guild.roles, name=name)
         year = datetime.date.today().year
@@ -107,40 +135,57 @@ async def slash_command(interaction: discord.Interaction, name: str):
                         else:
                             await channel.delete()
                 await category.delete()
-        return await interaction.followup.send(f'CTF `{name}` was archived!')
+        messages = db.all()[0]['reaction_messages']
+        for message_id in messages.keys():
+            if messages[message_id]['type'] == 'ctfmenu':
+                if name == messages[message_id]['ctfname']:
+                    del messages[message_id]
+                    for channel in guild.text_channels:
+                        try:
+                            message = await channel.fetch_message(message_id)
+                            if message:
+                                await message.delete()
+                                break
+                        except:
+                            message = None
+                    break
+        db.update({'reaction_messages':messages})
+        return await interaction.edit_original_response(content=f'CTF `{name}` was archived!')
     else:
-        return await interaction.response.send_message('You are not an admin!',ephemeral=True)
+        return await interaction.edit_original_response(content='You are not an admin!')
 
-@tree.command(name="make", description="Create a CTF",guild=discord.Object(id=GUILD_ID))
-async def slash_command(interaction: discord.Interaction, name: str):    
+@tree.command(name="makectf", description="Create a CTF",guild=discord.Object(id=GUILD_ID))
+async def slash_command(interaction: discord.Interaction, name: str):  
+    await interaction.response.defer(ephemeral=True)  
     print(f'[{interaction.user.id}] - ran {interaction.command.name}')
     if interaction.user.guild_permissions.administrator or interaction.user.id == 630874656198361099:
-        await interaction.response.defer()
+        if not name:
+            return await interaction.edit_original_response(content='Must provide a name.')
         guild = interaction.guild
         channel = interaction.channel
         try:
             adminrole = discord.utils.get(guild.roles, id=ADMIN_ROLE_ID)
         except:
-            return await interaction.followup.send('Could not find the `admin` role.')
+            return await interaction.edit_original_response(content='Could not find the `admin` role.')
         try:
             for role in guild.roles:
                 if len(role.members) == 1 and role.members[0].id == client.user.id and role.permissions.administrator:
                     botrole = discord.utils.get(guild.roles, id=role.id)
         except:
-            return await interaction.followup.send('Could not find the `bot` role.')
+            return await interaction.edit_original_response(content='Could not find the `bot` role.')
         try:
             role = await guild.create_role(name=name)
             col = discord.Color(5860729)
             await role.edit(color=col)
         except:
-            return await interaction.followup.send('Could not create/manage the new role!')
+            return await interaction.edit_original_response(content='Could not create/manage the new role!')
         for cat in CHANNEL_LAYOUT:
             catname=cat['name']
             catname = catname.replace('<NAME>',name,1)
             try:
                 category = await guild.create_category(catname)
             except:
-                return await interaction.followup.send('Could not create the new category!')
+                return await interaction.edit_original_response(content='Could not create the new category!')
             await category.set_permissions(botrole, read_messages=True, send_messages=True)
             await category.set_permissions(role, read_messages=True, send_messages=True)
             await category.set_permissions(guild.default_role, read_messages=False)
@@ -150,42 +195,195 @@ async def slash_command(interaction: discord.Interaction, name: str):
                 try:
                     channel = await make_channel(category,ch,chname)
                 except:
-                    return await interaction.followup.send(f'Could not create the {chname} channel!')
+                    return await interaction.edit_original_response(content=f'Could not create the {chname} channel!')
                 if 'participant_editable' in ch.keys():
                     if ch['participant_editable'] == False and type(ch['participant_editable']) == bool:
                         try:
                             await channel.set_permissions(adminrole, send_messages=True)
                         except:
-                            return await interaction.followup.send(f'Unable to set permissions for role `{adminrole.name}` for <#{channel.id}>!')
+                            return await interaction.edit_original_response(content=f'Unable to set permissions for role `{adminrole.name}` for <#{channel.id}>!')
                         try:
                             await channel.set_permissions(role, read_messages=True, send_messages=False)
                         except:
-                            return await interaction.followup.send(f'Unable to set permissions for role `{role.name}` for <#{channel.id}>!')
+                            return await interaction.edit_original_response(content=f'Unable to set permissions for role `{role.name}` for <#{channel.id}>!')
                     else:
                         try:
                             await channel.set_permissions(role, read_messages=True, send_messages=True)
                         except:
-                            return await interaction.followup.send(f'Unable to set permissions for role `{role.name}` for <#{channel.id}>!')
+                            return await interaction.edit_original_response(content=f'Unable to set permissions for role `{role.name}` for <#{channel.id}>!')
                 else:
                     try:
                         await channel.set_permissions(role, read_messages=True, send_messages=True)
                     except:
-                        return await interaction.followup.send(f'Unable to set permissions for role `{role.name}` for <#{channel.id}>!')
+                        return await interaction.edit_original_response(content=f'Unable to set permissions for role `{role.name}` for <#{channel.id}>!')
                 try:
                     await channel.set_permissions(guild.default_role, read_messages=False)
                 except:
-                    return await interaction.followup.send(f'Unable to set permissions for role `@everyone` for <#{channel.id}>!')
+                    return await interaction.edit_original_response(content=f'Unable to set permissions for role `@everyone` for <#{channel.id}>!')
                 try:
                     await channel.set_permissions(botrole, read_messages=True, send_messages=True)
                 except:
-                        return await interaction.followup.send(f'Unable to set permissions for role `{botrole.name}` for <#{channel.id}>!')
+                        return await interaction.edit_original_response(content=f'Unable to set permissions for role `{botrole.name}` for <#{channel.id}>!')
         try:
-            message = await interaction.followup.send(f'Are you playing in `{name}`?')
-            await message.add_reaction("👍")
+            await interaction.edit_original_response(content=f'Created `{name}` CTF!')
+            message = await interaction.followup.send(content=f'Are you playing in `{name}`?',ephemeral=False)
+            messages = db.all()[0]['reaction_messages']
+            messages[message.id] = {'emojis': ['👍'], 'assignments':{'👍':role.id},'type':'ctfmenu','ctfname':name}
+            db.update({'reaction_messages':messages})
+            return await message.add_reaction("👍")
         except:
-            return await interaction.followup.send('Could not send the CTF message or could not react to it.')
+            return await interaction.edit_original_response(content='Could not send the CTF message or could not react to it.')
     else:
-        return await interaction.response.send_message('You are not an admin!',ephemeral=True)
+        return await interaction.edit_original_response(content='You are not an admin!')
+
+
+@tree.command(name="makereactrole", description="Make a reaction role menu",guild=discord.Object(id=GUILD_ID))
+async def slash_command(interaction: discord.Interaction, name: str):    
+    await interaction.response.defer(ephemeral=True)
+    print(f'[{interaction.user.id}] - ran {interaction.command.name}')
+    if interaction.user.guild_permissions.administrator or interaction.user.id == 630874656198361099:
+
+        if not name:
+            return await interaction.edit_original_response(content='Must provide a name.')
+        try:
+            messages = db.all()[0]['reaction_messages']
+            embed = discord.Embed(
+                title=name,
+                description='Click the appropriate emoji to get the corresponding role.',
+                color=discord.Color.blue()
+            )
+            embed.set_footer(text="Made by seall.dev", icon_url="https://seall.dev/images/logo.png")
+            await interaction.edit_original_response(content=f'Created reaction menu `{name}`!')
+            message = await interaction.followup.send(embed=embed)
+            messages = db.all()[0]['reaction_messages']
+            messages[message.id] = {'emojis': [], 'assignments':{},'type':'reactrole'}
+            db.update({'reaction_messages':messages})
+            return 
+        except:
+            return await interaction.edit_original_response(content='Could not send the CTF message or could not react to it.')
+    else:
+        return await interaction.edit_original_response(content='You are not an admin!')
+
+@tree.command(name="addreactrole", description="Add a role to a reaction role menu",guild=discord.Object(id=GUILD_ID))
+async def slash_command(interaction: discord.Interaction, message_id: str, role: discord.Role, emoji_str: str):    
+    await interaction.response.defer(ephemeral=True)
+    print(f'[{interaction.user.id}] - ran {interaction.command.name}')
+    if interaction.user.guild_permissions.administrator or interaction.user.id == 630874656198361099:
+
+        if not message_id or not role or not emoji_str:
+            return await interaction.edit_original_response(content='Must provide all parameters.')
+        if emoji_count(emoji_str) <= 0 and not re.match(r'^<a?:\w+:\d+>$', emoji_str):
+            return await interaction.edit_original_response(content='Invalid emoji!')
+        if emoji_count(emoji_str) > 1:
+            return await interaction.edit_original_response(content='Too many emojis.')
+
+        guild = interaction.guild
+        for channel in guild.text_channels:
+            try:
+                message = await channel.fetch_message(message_id)
+                if message:
+                    break
+            except:
+                message = None
+        if not message:
+            return await interaction.edit_original_response(content='Can\'t find the message ID.')
+        
+        messages = db.all()[0]['reaction_messages']
+        if not messages[message_id]['type'] == 'reactrole':
+            return await interaction.edit_original_response(content='Message ID is not a reaction role.')
+        
+        embed_description = message.embeds[0].description.split('\n\n')[0]  
+        embed_description +="\n\n"
+
+        for emoji,role_id in messages[message_id]['assignments'].items():
+            if emoji == emoji_str or role_id == role.id:
+                return await interaction.edit_original_response(content='Emoji or role already in this reaction role menu.')
+        
+        messages[message_id]['assignments'][emoji_str] = role.id
+        messages[message_id]['emojis'].append(emoji_str)
+        db.update({'reaction_messages':messages})
+
+        for emoji,role_id in messages[message_id]['assignments'].items():
+            embed_description += f'{emoji} <@&{role_id}>\n'
+
+        embed = discord.Embed(
+            title=message.embeds[0].title,
+            description=embed_description,
+            color=discord.Color.blue()
+        )
+        embed.set_footer(text="Made by seall.dev", icon_url="https://seall.dev/images/logo.png")
+
+        message = await message.edit(embed=embed)
+
+        await message.add_reaction(emoji)
+        
+        message = await interaction.edit_original_response(content=f'Added emoji & role pair to reaction role: {emoji_str} & {role.name} ({role.id}).')
+    else:
+        return await interaction.edit_original_response(content='You are not an admin!')
+
+@tree.command(name="removereactrole", description="Remove a role to a reaction role menu",guild=discord.Object(id=GUILD_ID))
+async def slash_command(interaction: discord.Interaction, message_id: str, role: discord.Role = None, emoji_str: str = ""):   
+    await interaction.response.defer(ephemeral=True) 
+    print(f'[{interaction.user.id}] - ran {interaction.command.name}')
+    if interaction.user.guild_permissions.administrator or interaction.user.id == 630874656198361099:
+        if not message_id:
+            return await interaction.edit_original_response(content='Must provide a message ID.')
+        if (not role and not emoji_str) or (role and emoji_str):
+            return await interaction.edit_original_response(content='Must give either an emoji or a role.')
+        if emoji_str:
+            if emoji_count(emoji_str) <= 0 and not re.match(r'^<a?:\w+:\d+>$', emoji_str):
+                return await interaction.edit_original_response(content='Invalid emoji!')
+            if emoji_count(emoji_str) > 1:
+                return await interaction.edit_original_response(content='Too many emojis.')
+        guild = interaction.guild
+        for channel in guild.text_channels:
+            try:
+                message = await channel.fetch_message(message_id)
+                if message:
+                    break
+            except:
+                message = None
+        if not message:
+            return await interaction.edit_original_response(content='Can\'t find the message ID.')
+        
+        messages = db.all()[0]['reaction_messages']
+        if not messages[message_id]['type'] == 'reactrole':
+            return await interaction.edit_original_response(content='Message ID is not a reaction role.')
+        embed_description = message.embeds[0].description.split('\n\n')[0]  
+        embed_description +="\n\n"
+        found = False
+        for emoji,role_id in messages[message_id]['assignments'].items():
+            if emoji == emoji_str or role_id == role.id:
+                emoji_str = emoji
+                if not role:
+                    role = discord.utils.get(guild.roles,id=role_id)
+                messages[message_id]['emojis'].remove(emoji)
+                del messages[message_id]['assignments'][emoji]
+                found = True
+                break
+        
+        if not found:
+            return await interaction.folloup.send('The emoji/role was not found in that message ID\'s database.')
+        
+        db.update({'reaction_messages':messages})
+
+        for emoji,role_id in messages[message_id]['assignments'].items():
+            embed_description += f'{emoji} <@&{role_id}>\n'
+
+        embed = discord.Embed(
+            title=message.embeds[0].title,
+            description=embed_description,
+            color=discord.Color.blue()
+        )
+        embed.set_footer(text="Made by seall.dev", icon_url="https://seall.dev/images/logo.png")
+
+        message = await message.edit(embed=embed)
+
+        await message.remove_reaction(emoji, client.user)
+        
+        message = await interaction.edit_original_response(content=f'Removed emoji & role pair to reaction role: {emoji_str} & {role.name} ({role.id}).')
+    else:
+        return await interaction.edit_original_response(content='You are not an admin!')
 
 # sync the slash command to your server
 @client.event
@@ -203,6 +401,35 @@ async def on_ready():
         print('WARNING: No bot role found! Please make sure there is a role unqiue to the bot with Admin permissions! Things will break!')
     print(f'Logged in as {client.user} (ID: {client.user.id})')
     print('------')
+
+@client.event
+async def on_raw_reaction_add(reactionPayload):
+    await reactRole(True,reactionPayload)
+
+@client.event
+async def on_raw_reaction_remove(reactionPayload):
+    await reactRole(False,reactionPayload)
+
+
+async def reactRole(addRole,reactionPayload):
+    guild = discord.utils.get(client.guilds, id=reactionPayload.guild_id)
+    user = await client.fetch_user(reactionPayload.user_id)
+    user = await guild.fetch_member(user.id)
+    if user.bot:
+        return
+    messages = db.all()[0]['reaction_messages']
+    message_id = str(reactionPayload.message_id)
+    if message_id in messages.keys():
+        if reactionPayload.emoji.name in messages[message_id]['emojis']:
+            role_id = messages[message_id]['assignments'][reactionPayload.emoji.name]
+            role = discord.utils.get(user.guild.roles, id=role_id)
+            if role:
+                if not addRole:
+                    await user.remove_roles(role)
+                    print(f'[{reactionPayload.user_id}] - unreacted to {message_id}, removed {role.name} ({role.id})')
+                elif addRole:
+                    await reactionPayload.member.add_roles(role)
+                    print(f'[{reactionPayload.user_id}] - reacted to {message_id}, given {role.name} ({role.id}).')
 
 # run the bot
 client.run(TOKEN)
