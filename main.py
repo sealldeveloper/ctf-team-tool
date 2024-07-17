@@ -8,16 +8,39 @@ import os, json, re
 from emoji import emoji_count
 from time import sleep
 from tinydb import TinyDB, Query, operations
-db = TinyDB('db.json')
+
+def get_env_variable(var_name, default=None):
+    value = os.environ.get(var_name)
+    print(value)
+    if value is None:
+        load_dotenv()  # Load .env file if not already loaded
+        value = os.getenv(var_name, default)
+        print(value)
+    return value
+
+TOKEN = get_env_variable("TOKEN")
+GUILD_ID = int(get_env_variable("GUILD_ID", 0))
+ADMIN_ROLE_ID = int(get_env_variable("ADMIN_ROLE_ID", 0))
+
+DB_PATH = get_env_variable("DB_PATH", "db.json")
+db = TinyDB(DB_PATH)
 query = Query()
-with open('channels.json','r') as f:
-    CHANNEL_LAYOUT=json.load(f)
 
-load_dotenv()
+CHANNELS_PATH = get_env_variable("CHANNELS_PATH", "channels.json")
+with open(CHANNELS_PATH, 'r') as f:
+    CHANNEL_LAYOUT = json.load(f)
 
-TOKEN = os.getenv("TOKEN")
-GUILD_ID = int(os.getenv("GUILD_ID"))
-ADMIN_ROLE_ID = int(os.getenv("ADMIN_ROLE_ID"))
+# db = TinyDB('db.json')
+# query = Query()
+# with open('channels.json','r') as f:
+#     CHANNEL_LAYOUT=json.load(f)
+    
+
+# load_dotenv()
+
+# TOKEN = os.getenv("TOKEN")
+# GUILD_ID = int(os.getenv("GUILD_ID"))
+# ADMIN_ROLE_ID = int(os.getenv("ADMIN_ROLE_ID"))
 BOT_ROLE_ID = 0
 
 if not db.all():
@@ -135,20 +158,20 @@ async def slash_command(interaction: discord.Interaction, name: str):
                         else:
                             await channel.delete()
                 await category.delete()
-        messages = db.all()[0]['reaction_messages']
-        for message_id in messages.keys():
-            if messages[message_id]['type'] == 'ctfmenu':
-                if name == messages[message_id]['ctfname']:
-                    del messages[message_id]
-                    for channel in guild.text_channels:
-                        try:
-                            message = await channel.fetch_message(message_id)
-                            if message:
-                                await message.delete()
-                                break
-                        except:
-                            message = None
-                    break
+        # messages = db.all()[0]['reaction_messages']
+        # for message_id in messages.keys():
+        #     if messages[message_id]['type'] == 'ctfmenu':
+        #         if name == messages[message_id]['ctfname']:
+        #             del messages[message_id]
+        #             for channel in guild.text_channels:
+        #                 try:
+        #                     message = await channel.fetch_message(message_id)
+        #                     if message:
+        #                         await message.delete()
+        #                         break
+        #                 except:
+        #                     message = None
+        #             break
         db.update({'reaction_messages':messages})
         return await interaction.edit_original_response(content=f'CTF `{name}` was archived!')
     else:
