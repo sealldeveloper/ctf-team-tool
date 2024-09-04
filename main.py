@@ -121,21 +121,31 @@ async def slash_command(interaction: discord.Interaction, name: str):
 @tree.command(name="archivectf", description="Archive a CTF",guild=discord.Object(id=GUILD_ID))
 async def slash_command(interaction: discord.Interaction, name: str):    
     await interaction.response.defer(ephemeral=True)
-    print(f'[{interaction.user.id}] - ran {interaction.command.name}')
-    if interaction.user.guild_permissions.administrator or interaction.user.id == 630874656198361099:
-        if not name:
-            return await interaction.edit_original_response(content='Must provide a name.')
-        guild = interaction.guild
-        role = discord.utils.get(guild.roles, name=name)
-        year = datetime.date.today().year
-        quarter = math.ceil(datetime.datetime.now().month/3.)
-        cat_name = f"Archive {year} {quarter}/4"
-        archival_category = discord.utils.get(guild.categories, name=cat_name)
-        if not archival_category:
-            archival_category = await guild.create_category(cat_name)
+    logger.info(f'[{interaction.user.id}] - ran {interaction.command.name}')
+    
+    if not (interaction.user.guild_permissions.administrator or interaction.user.id == 630874656198361099):
+        logger.warning(f'User {interaction.user.id} attempted to use command without permission')
+        return await interaction.edit_original_response(content='You are not an admin!')
+
+    if not name:
+        logger.warning('Command executed without a name parameter')
+        return await interaction.edit_original_response(content='Must provide a name.')
+
+    guild = interaction.guild
+    role = discord.utils.get(guild.roles, name=name)
+    logger.info(f'Looking for role: {name}, Found: {role is not None}')
+    year = datetime.date.today().year
+    quarter = math.ceil(datetime.datetime.now().month/3.)
+    cat_name = f"Archive {year} {quarter}/4"
+    archival_category = discord.utils.get(guild.categories, name=cat_name)
+    if not archival_category:
+        archival_category = await guild.create_category(cat_name)
+    try:
         for cat in CHANNEL_LAYOUT:
+            
             catname = cat['name']
             catname = catname.replace('<NAME>',name,1)
+            logger.info(f'Processing category: {catname}')
             category = discord.utils.get(guild.categories, name=catname)
             if category:
                 for ch in cat['channels']:
@@ -158,24 +168,26 @@ async def slash_command(interaction: discord.Interaction, name: str):
                         else:
                             await channel.delete()
                 await category.delete()
-        # messages = db.all()[0]['reaction_messages']
-        # for message_id in messages.keys():
-        #     if messages[message_id]['type'] == 'ctfmenu':
-        #         if name == messages[message_id]['ctfname']:
-        #             del messages[message_id]
-        #             for channel in guild.text_channels:
-        #                 try:
-        #                     message = await channel.fetch_message(message_id)
-        #                     if message:
-        #                         await message.delete()
-        #                         break
-        #                 except:
-        #                     message = None
-        #             break
-        db.update({'reaction_messages':messages})
-        return await interaction.edit_original_response(content=f'CTF `{name}` was archived!')
-    else:
-        return await interaction.edit_original_response(content='You are not an admin!')
+    except Exception as e:
+        logger.error(f'Error during archiving process: {str(e)}')
+        return await interaction.edit_original_response(content=f'An error occurred while archiving: {str(e)}')
+    # messages = db.all()[0]['reaction_messages']
+    # for message_id in messages.keys():
+    #     if messages[message_id]['type'] == 'ctfmenu':
+    #         if name == messages[message_id]['ctfname']:
+    #             del messages[message_id]
+    #             for channel in guild.text_channels:
+    #                 try:
+    #                     message = await channel.fetch_message(message_id)
+    #                     if message:
+    #                         await message.delete()
+    #                         break
+    #                 except:
+    #                     message = None
+    #             break
+    db.update({'reaction_messages':messages})
+    logger.info(f'CTF {name} archived successfully')
+    return await interaction.edit_original_response(content=f'CTF `{name}` was archived!')
 
 @tree.command(name="makectf", description="Create a CTF",guild=discord.Object(id=GUILD_ID))
 async def slash_command(interaction: discord.Interaction, name: str):  
