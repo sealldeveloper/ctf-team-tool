@@ -8,6 +8,10 @@ import os, json, re
 from emoji import emoji_count
 from time import sleep
 from tinydb import TinyDB, Query, operations
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 def get_env_variable(var_name, default=None):
     value = os.environ.get(var_name)
